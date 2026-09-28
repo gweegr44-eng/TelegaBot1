@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from APIFolder.auth import verify_init_data
+from APIFolder.notify import notify_report_sent
 from Database.database import get_session
 from Database.models import Store, User, Shift, Report
 from config import SLOTS, TIMEZONE
@@ -67,14 +68,14 @@ async def get_me(payload: MePayload, session: AsyncSession = Depends(get_session
     result = await session.execute(select(User).where(User.max_user_id == max_user_id))
     user = result.scalar_one_or_none()
     if not user:
-        return {"store_code": None, "has_active_shift": False}
+        return {"store_code": None, "has_active_shift": False, "pending_closing": False}
 
     result = await session.execute(
         select(Shift).where(Shift.user_id == user.id, Shift.is_active == True)
     )
     shift = result.scalar_one_or_none()
     if not shift:
-        return {"store_code": None, "has_active_shift": False}
+        return {"store_code": None, "has_active_shift": False, "pending_closing": False}
 
     result = await session.execute(select(Store).where(Store.id == shift.store_id))
     store = result.scalar_one_or_none()
@@ -84,6 +85,7 @@ async def get_me(payload: MePayload, session: AsyncSession = Depends(get_session
         "address": store.address if store else None,
         "has_active_shift": True,
         "shift_started_at": shift.started_at.isoformat() if shift.started_at else None,
+        "pending_closing": bool(shift.pending_closing),
     }
 
 
@@ -97,7 +99,6 @@ async def submit_report(
     if not max_user_id:
         raise HTTPException(401, "Invalid initData")
 
-    # Найти/создать пользователя
     result = await session.execute(select(User).where(User.max_user_id == max_user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -106,20 +107,18 @@ async def submit_report(
         session.add(user)
         await session.flush()
 
-    # Активная смена
     result = await session.execute(
         select(Shift).where(Shift.user_id == user.id, Shift.is_active == True)
     )
     shift = result.scalar_one_or_none()
     if not shift:
-        raise HTTPException(400, "Нет активной смены. Начни смену: /start_shift")
+        raise HTTPException(400, "Нет активной смены")
 
     result = await session.execute(select(Store).where(Store.id == shift.store_id))
     store = result.scalar_one_or_none()
     if not store:
         raise HTTPException(500, "Store not found")
 
-    # Проверка слота
     valid = SLOTS + ["closing"]
     if payload.slot_time not in valid:
         raise HTTPException(400, f"Invalid slot: {payload.slot_time}")
@@ -127,7 +126,6 @@ async def submit_report(
     tz = ZoneInfo(TIMEZONE)
     today = datetime.now(tz).date()
 
-    # Удалить старый отчёт за этот слот (если был)
     result = await session.execute(
         select(Report).where(
             Report.store_id == store.id,
@@ -141,21 +139,29 @@ async def submit_report(
         await session.delete(existing)
         await session.flush()
 
-    # Создать новый
+    is_closing = (
+            payload.is_closing
+            or payload.slot_time == "closing"
+            or shift.pending_closing
+    )
+
+    saved_message_id = shift.last_message_id
+
     session.add(Report(
         store_id=store.id,
         user_id=user.id,
         shift_id=shift.id,
         report_date=today,
         slot_time=payload.slot_time,
-        is_closing=payload.is_closing or payload.slot_time == "closing",
+        is_closing=is_closing,
         **payload.metrics.model_dump(),
     ))
 
-    # Если это отчёт по закрытию — закрываем смену
-    if payload.is_closing or payload.slot_time == "closing":
-        shift.ended_at = datetime.now(tz)
+    if is_closing:
+        shift.ended_at = datetime.now(tz).replace(tzinfo=None)
         shift.is_active = False
+        shift.pending_closing = False
+        shift.last_message_id = None
 
     try:
         await session.commit()
@@ -164,5 +170,12 @@ async def submit_report(
         logger.error(f"DB error: {e}")
         raise HTTPException(500, "Не удалось сохранить отчёт")
 
-    logger.info(f"Report saved: {store.store_code} {payload.slot_time}")
+    logger.info(f"Report saved: {store.store_code} {payload.slot_time} closing={is_closing}")
+
+    await notify_report_sent(
+        int(max_user_id),
+        is_closing=is_closing,
+        message_id=saved_message_id,
+    )
+
     return {"ok": True}

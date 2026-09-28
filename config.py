@@ -13,14 +13,14 @@ DB_PATH = os.getenv("DB_PATH", "reports.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
 TIMEZONE = os.getenv("TIMEZONE", "Asia/Yekaterinburg")
-
+MAX_BOT_API_URL = "https://botapi.max.ru"
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 EMPLOYEE_WEBAPP_URL = os.getenv("EMPLOYEE_WEBAPP_URL", "")
 MANAGER_WEBAPP_URL = os.getenv("MANAGER_WEBAPP_URL", "")
 
 MAX_BOT_ID = int(os.getenv("MAX_BOT_ID", "460305816"))
 
-SLOTS = ["11:30", "13:30", "15:30", "17:30", "20:00"]
+SLOTS = ["11:30", "13:30", "15:30", "17:30"]
 
 REPORT_METRICS = [
     "revenue", "sim_count", "gift_sim_count", "rev", "zc",

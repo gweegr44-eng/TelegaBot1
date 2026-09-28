@@ -8,6 +8,7 @@ from sqlalchemy import select
 import aiomax
 from Database.database import async_session
 from Database.models import User, Store, Shift
+from BotLogic import messages as msg
 from config import SLOTS, TIMEZONE, EMPLOYEE_WEBAPP_URL, MAX_BOT_ID
 
 logger = logging.getLogger(__name__)
@@ -16,12 +17,12 @@ tz = ZoneInfo(TIMEZONE)
 
 
 class CustomWebAppButton(aiomax.buttons.Button):
-    def __init__(self, text: str, bot_id: int, url: str):
+    def __init__(self, text, bot_id, url):
         super().__init__("open_app", text)
         self.bot_id = bot_id
         self.url = url
 
-    def to_json(self) -> dict:
+    def to_json(self):
         return {
             "type": "open_app",
             "text": self.text,
@@ -31,118 +32,94 @@ class CustomWebAppButton(aiomax.buttons.Button):
 
 
 def start_scheduler(bot: aiomax.Bot):
-    # 4 фиксированных слота
     for slot in SLOTS:
-        hour, minute = slot.split(":")
+        h, m = slot.split(":")
         scheduler.add_job(
             send_slot_notification,
-            CronTrigger(hour=int(hour), minute=int(minute), timezone=tz),
+            CronTrigger(hour=int(h), minute=int(m), timezone=tz),
             args=[bot, slot],
-            id=f"slot_{slot}",
-            replace_existing=True,
+            id=f"slot_{slot}", replace_existing=True,
         )
-
-    # 21:00 — напоминание закрыть смену
-    scheduler.add_job(
-        remind_close_shift,
-        CronTrigger(hour=21, minute=0, timezone=tz),
-        args=[bot], id="remind_2100", replace_existing=True,
-    )
-
-    # 23:30 — предупреждение
-    scheduler.add_job(
-        warn_auto_close,
-        CronTrigger(hour=23, minute=30, timezone=tz),
-        args=[bot], id="warn_2330", replace_existing=True,
-    )
-
-    # 23:59 — автозакрытие
-    scheduler.add_job(
-        auto_close_shifts,
-        CronTrigger(hour=23, minute=59, timezone=tz),
-        args=[bot], id="autoclose_2359", replace_existing=True,
-    )
-
+    scheduler.add_job(remind_close_shift, CronTrigger(hour=21, minute=0, timezone=tz),
+                      args=[bot], id="remind_2100", replace_existing=True)
+    scheduler.add_job(warn_auto_close, CronTrigger(hour=23, minute=30, timezone=tz),
+                      args=[bot], id="warn_2330", replace_existing=True)
+    scheduler.add_job(auto_close_shifts, CronTrigger(hour=23, minute=59, timezone=tz),
+                      args=[bot], id="autoclose_2359", replace_existing=True)
     scheduler.start()
     logger.info(f"[Scheduler] Запущен. Слоты: {SLOTS}")
 
 
-async def _get_active_shift_users(session):
-    """Возвращает список кортежей (user, store, shift)."""
+async def _get_active_shifts(session):
     result = await session.execute(select(Shift).where(Shift.is_active == True))
     shifts = result.scalars().all()
     out = []
     for sh in shifts:
-        result = await session.execute(select(User).where(User.id == sh.user_id))
-        user = result.scalar_one_or_none()
-        result = await session.execute(select(Store).where(Store.id == sh.store_id))
-        store = result.scalar_one_or_none()
-        if user and store:
-            out.append((user, store, sh))
+        u = (await session.execute(select(User).where(User.id == sh.user_id))).scalar_one_or_none()
+        s = (await session.execute(select(Store).where(Store.id == sh.store_id))).scalar_one_or_none()
+        if u and s:
+            out.append((u, s, sh))
     return out
 
 
-async def send_slot_notification(bot: aiomax.Bot, slot: str):
+async def send_slot_notification(bot, slot):
     logger.info(f"[Scheduler] Слот {slot}")
     async with async_session() as session:
-        entries = await _get_active_shift_users(session)
+        entries = await _get_active_shifts(session)
         for user, store, shift in entries:
             url = f"{EMPLOYEE_WEBAPP_URL}?slot={slot}"
             kb = aiomax.buttons.KeyboardBuilder()
-            kb.add(CustomWebAppButton("📝 Заполнить отчёт", bot_id=MAX_BOT_ID, url=url))
+            kb.add(CustomWebAppButton("📝 Отчёт", MAX_BOT_ID, url))
             try:
-                await bot.send_message(
+                sent = await bot.send_message(
                     user_id=int(user.max_user_id),
-                    text=(
-                        f"⏰ Время отчёта за **{slot}**.\n"
-                        f"📍 Точка: {store.store_code}\n"
-                        f"Нажми кнопку ниже."
-                    ),
-                    keyboard=kb,
+                    text=f"⏰ Отчёт за **{slot}**.\n📍 Точка: {store.store_code}\nНажми кнопку.",
+                    format="markdown", keyboard=kb,
                 )
-                logger.info(f"→ {user.max_user_id}")
+                if sent and getattr(sent, "id", None):
+                    async with async_session() as sess2:
+                        result = await sess2.execute(select(Shift).where(Shift.id == shift.id))
+                        sh = result.scalar_one_or_none()
+                        if sh:
+                            sh.last_message_id = str(sent.id)
+                            await sess2.commit()
+                    logger.info(f"[Scheduler] saved last_message_id={sent.id}")
             except Exception as e:
-                logger.error(f"Ошибка {user.max_user_id}: {e}")
+                logger.error(f"Ошибка: {e}")
 
 
-async def remind_close_shift(bot: aiomax.Bot):
+async def remind_close_shift(bot):
     async with async_session() as session:
-        for user, store, shift in await _get_active_shift_users(session):
+        for user, store, shift in await _get_active_shifts(session):
             try:
-                await bot.send_message(
-                    user_id=int(user.max_user_id),
-                    text="🕘 Если ты закончил работу — закрой смену: /end_shift",
-                )
+                await bot.send_message(user_id=int(user.max_user_id),
+                                       text=msg.REMIND_CLOSE)
             except Exception:
                 pass
 
 
-async def warn_auto_close(bot: aiomax.Bot):
+async def warn_auto_close(bot):
     async with async_session() as session:
-        for user, store, shift in await _get_active_shift_users(session):
+        for user, store, shift in await _get_active_shifts(session):
             try:
-                await bot.send_message(
-                    user_id=int(user.max_user_id),
-                    text="⏰ Смена закроется автоматически через 30 минут.",
-                )
+                await bot.send_message(user_id=int(user.max_user_id),
+                                       text=msg.WARN_AUTO_CLOSE)
             except Exception:
                 pass
 
 
-async def auto_close_shifts(bot: aiomax.Bot):
+async def auto_close_shifts(bot):
     now = datetime.now(tz)
     count = 0
     async with async_session() as session:
-        for user, store, shift in await _get_active_shift_users(session):
-            shift.ended_at = now
+        for user, store, shift in await _get_active_shifts(session):
+            shift.ended_at = now.replace(tzinfo=None)
             shift.is_active = False
             shift.is_auto_closed = True
             count += 1
             try:
-                await bot.send_message(
-                    user_id=int(user.max_user_id),
-                    text="🌙 Смена закрыта автоматически. Хорошего отдыха!",
-                )
+                await bot.send_message(user_id=int(user.max_user_id),
+                                       text=msg.SHIFT_AUTO_CLOSED)
             except Exception:
                 pass
         await session.commit()

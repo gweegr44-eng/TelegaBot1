@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import signal
 import aiomax
 from config import MAX_BOT_TOKEN
 from BotLogic.handlers import setup_handlers
@@ -20,10 +21,20 @@ async def main():
     while True:
         try:
             await bot.start_polling()
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            logger.info("[Bot] Остановка...")
+            break
         except Exception as e:
             logger.error(f"[Bot] Ошибка polling: {e}. Переподключение через 10 сек...")
-            await asyncio.sleep(10)
+            try:
+                await asyncio.sleep(10)
+            except (KeyboardInterrupt, asyncio.CancelledError):
+                logger.info("[Bot] Остановка...")
+                break
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[Bot] Остановлен.")

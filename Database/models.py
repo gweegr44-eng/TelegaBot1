@@ -9,7 +9,6 @@ Base = declarative_base()
 
 
 class Store(Base):
-    """Торговая точка МТС."""
     __tablename__ = "stores"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -20,10 +19,11 @@ class Store(Base):
 
     shifts = relationship("Shift", back_populates="store")
     reports = relationship("Report", back_populates="store")
+    users_last = relationship("User", back_populates="last_store",
+                              foreign_keys="User.last_store_id")
 
 
 class User(Base):
-    """Сотрудник или руководитель."""
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -31,15 +31,17 @@ class User(Base):
     role = Column(String(20), default="employee", nullable=False)
     first_name = Column(String(100), nullable=True)
     username = Column(String(100), nullable=True)
+    last_store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
     notify_before_close = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
 
+    last_store = relationship("Store", back_populates="users_last",
+                              foreign_keys=[last_store_id])
     shifts = relationship("Shift", back_populates="user")
     reports = relationship("Report", back_populates="user")
 
 
 class Shift(Base):
-    """Рабочая смена сотрудника."""
     __tablename__ = "shifts"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -49,6 +51,8 @@ class Shift(Base):
     ended_at = Column(DateTime, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     is_auto_closed = Column(Boolean, default=False)
+    pending_closing = Column(Boolean, default=False)
+    last_message_id = Column(String(100), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
     user = relationship("User", back_populates="shifts")
@@ -57,13 +61,10 @@ class Shift(Base):
 
 
 class Report(Base):
-    """Отчёт с торговой точки."""
     __tablename__ = "reports"
     __table_args__ = (
-        UniqueConstraint(
-            "store_id", "user_id", "report_date", "slot_time",
-            name="uq_report_per_slot_user"
-        ),
+        UniqueConstraint("store_id", "user_id", "report_date", "slot_time",
+                         name="uq_report_per_slot_user"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -72,10 +73,9 @@ class Report(Base):
     shift_id = Column(Integer, ForeignKey("shifts.id"), nullable=True, index=True)
 
     report_date = Column(Date, default=date.today, nullable=False, index=True)
-    slot_time = Column(String(10), nullable=False)  # "11:30" или "closing"
+    slot_time = Column(String(10), nullable=False)
     is_closing = Column(Boolean, default=False)
 
-    # 12 метрик (деньги — целые числа)
     revenue = Column(Integer, default=0)
     sim_count = Column(Integer, default=0)
     gift_sim_count = Column(Integer, default=0)
