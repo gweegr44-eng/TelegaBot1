@@ -1,0 +1,26 @@
+# ===== Бот для MAX =====
+aiomax>=2.11.0
+
+# ===== База данных =====
+SQLAlchemy[asyncio]>=2.0.30
+aiosqlite>=0.20.0
+greenlet>=3.0.0
+
+# ===== Планировщик задач =====
+APScheduler>=3.10.0
+
+# ===== Backend (FastAPI) =====
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+
+# ===== Экспорт в Excel =====
+pandas>=2.2.0
+openpyxl>=3.1.0
+
+# ===== Конфигурация =====
+python-dotenv>=1.0.0
+
+# ===== HTTP-запросы =====
+aiohttp>=3.9.0
+requests>=2.31.0

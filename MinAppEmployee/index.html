@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Отчёт с точки</title>
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <link rel="stylesheet" href="style.css?v=30">
+</head>
+<body>
+    <header class="header">
+        <h1 id="title">📝 Отчёт за смену</h1>
+        <div class="header-info">
+            <span>Точка: <strong id="store-code">загрузка...</strong></span>
+        </div>
+    </header>
+
+    <main class="form-container">
+        <form id="report-form">
+            <label id="slot-label">
+                <span>Выберите слот отчёта</span>
+                <select name="slot_time" id="slot-select">
+                    <option value="11:30">11:30</option>
+                    <option value="13:30">13:30</option>
+                    <option value="15:30">15:30</option>
+                    <option value="17:30">17:30</option>
+                    <option value="closing">По закрытию смены</option>
+                </select>
+            </label>
+
+            <label><span>Выручка, ₽</span><input type="number" name="revenue" value="0" step="1" inputmode="numeric"></label>
+            <label><span>Кол-во SIM</span><input type="number" name="sim_count" value="0" inputmode="numeric"></label>
+            <label><span>Кол-во подарочных SIM</span><input type="number" name="gift_sim_count" value="0" inputmode="numeric"></label>
+            <label><span>Rev</span><input type="number" name="rev" value="0" step="1" inputmode="numeric"></label>
+            <label><span>ЗЦ</span><input type="number" name="zc" value="0" inputmode="numeric"></label>
+            <label><span>Абонемент</span><input type="number" name="subscription" value="0" inputmode="numeric"></label>
+            <label><span>Заявки MNP</span><input type="number" name="mnp_requests" value="0" inputmode="numeric"></label>
+            <label><span>Combo X2</span><input type="number" name="combo_x2" value="0" inputmode="numeric"></label>
+            <label><span>Аксессуары, ₽</span><input type="number" name="accessories_sum" value="0" step="1" inputmode="numeric"></label>
+            <label><span>Смартфоны + кнопки, ₽</span><input type="number" name="smartphones_buttons_sum" value="0" step="1" inputmode="numeric"></label>
+            <label><span>Платные услуги, ₽</span><input type="number" name="paid_services" value="0" step="1" inputmode="numeric"></label>
+            <label><span>Заявки на кредиты</span><input type="number" name="credit_requests" value="0" inputmode="numeric"></label>
+            <button type="submit" class="submit-btn">✅ Отправить отчёт</button>
+        </form>
+    </main>
+
+    <script src="app.js?v=30"></script>
+</body>
+</html>
