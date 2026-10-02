@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>МТС-Франшиза</title>
+    <script src="https://st.max.ru/js/max-web-app.js"></script>
+    <link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+
+    <div id="loading" class="screen loading-screen">
+        <div class="spinner"></div>
+        <p>Загрузка...</p>
+    </div>
+
+    <div id="error-screen" class="screen hidden">
+        <div class="error-box">
+            <p id="error-text"></p>
+        </div>
+    </div>
+
+    <!-- ЭКРАН СОТРУДНИКА -->
+    <div id="employee-screen" class="screen hidden">
+        <header class="header">
+            <h1 id="emp-title">📝 Отчёт за смену</h1>
+            <div class="header-info">
+                <span>Точка: <strong id="emp-store-code">—</strong></span>
+            </div>
+        </header>
+
+        <main class="form-container">
+            <form id="report-form">
+                <label id="slot-label">
+                    <span>Слот отчёта</span>
+                    <select name="slot_time" id="slot-select">
+                        <option value="11:30">11:30</option>
+                        <option value="13:30">13:30</option>
+                        <option value="15:30">15:30</option>
+                        <option value="17:30">17:30</option>
+                        <option value="closing">По закрытию смены</option>
+                    </select>
+                </label>
+
+                <label><span>Выручка, ₽</span><input type="number" name="revenue" value="0" step="1" inputmode="numeric"></label>
+                <label><span>Кол-во SIM</span><input type="number" name="sim_count" value="0" inputmode="numeric"></label>
+                <label><span>Кол-во подарочных SIM</span><input type="number" name="gift_sim_count" value="0" inputmode="numeric"></label>
+                <label><span>Rev</span><input type="number" name="rev" value="0" step="1" inputmode="numeric"></label>
+                <label><span>ЗЦ</span><input type="number" name="zc" value="0" inputmode="numeric"></label>
+                <label><span>Абонемент</span><input type="number" name="subscription" value="0" inputmode="numeric"></label>
+                <label><span>Заявки MNP</span><input type="number" name="mnp_requests" value="0" inputmode="numeric"></label>
+                <label><span>Combo X2</span><input type="number" name="combo_x2" value="0" inputmode="numeric"></label>
+                <label><span>Аксессуары, ₽</span><input type="number" name="accessories_sum" value="0" step="1" inputmode="numeric"></label>
+                <label><span>Смартфоны + кнопки, ₽</span><input type="number" name="smartphones_buttons_sum" value="0" step="1" inputmode="numeric"></label>
+                <label><span>Платные услуги, ₽</span><input type="number" name="paid_services" value="0" step="1" inputmode="numeric"></label>
+                <label><span>Заявки на кредиты</span><input type="number" name="credit_requests" value="0" inputmode="numeric"></label>
+
+                <button type="submit" class="submit-btn">✅ Отправить отчёт</button>
+            </form>
+        </main>
+    </div>
+
+    <!-- ЭКРАН РУКОВОДИТЕЛЯ (ВЫГРУЗКА) -->
+    <div id="manager-screen" class="screen hidden">
+        <header class="header">
+            <div class="header-row">
+                <h1>📊 Отчёты</h1>
+                <button id="open-settings" class="settings-btn" title="Настройки">⚙️</button>
+            </div>
+            <p class="subtitle">Выгрузка в Excel</p>
+        </header>
+
+        <main class="container">
+            <section class="block">
+                <label class="label">Период</label>
+                <select id="period">
+                    <option value="today">Сегодня</option>
+                    <option value="yesterday">Вчера</option>
+                    <option value="week">Эта неделя</option>
+                    <option value="month">Этот месяц</option>
+                    <option value="custom">Произвольный</option>
+                </select>
+            </section>
+
+            <section id="custom-dates" class="block hidden">
+                <label class="label">С даты</label>
+                <input type="date" id="date-from">
+                <label class="label">По дату</label>
+                <input type="date" id="date-to">
+            </section>
+
+            <section class="block">
+                <label class="label checkbox-label">
+                    <input type="checkbox" id="all-stores" checked>
+                    <span>Все точки</span>
+                </label>
+                <div id="stores-list" class="stores"></div>
+            </section>
+
+            <button id="download-btn" class="submit-btn">📥 Скачать Excel</button>
+
+            <div id="status-msg" class="status hidden"></div>
+        </main>
+    </div>
+
+    <!-- ЭКРАН НАСТРОЕК -->
+    <div id="settings-screen" class="screen hidden">
+        <header class="header">
+            <div class="header-row">
+                <h1>⚙️ Настройки отчёта</h1>
+                <button id="close-settings" class="settings-btn" title="Закрыть">✖️</button>
+            </div>
+            <p class="subtitle">Что показывать в Excel</p>
+        </header>
+
+        <main class="container">
+            <section class="block">
+                <label class="label checkbox-label">
+                    <input type="checkbox" id="all-metrics" checked>
+                    <span><strong>Все метрики</strong></span>
+                </label>
+                <div id="metrics-list" class="stores"></div>
+            </section>
+
+            <button id="save-settings-btn" class="submit-btn">💾 Сохранить настройки</button>
+
+            <div id="settings-status" class="status hidden"></div>
+        </main>
+    </div>
+
+    <script src="app.js?v=4"></script>
+</body>
+</html>

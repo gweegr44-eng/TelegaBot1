@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from APIFolder.api import router as api_router
+from APIFolder.manager_api import router as manager_router
 from Database.database import init_db
 
 logging.basicConfig(
@@ -16,8 +17,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-EMPLOYEE_DIR = BASE_DIR / "MinAppEmployee"
-MANAGER_DIR = BASE_DIR / "MinAppManager"
+APP_DIR = BASE_DIR / "MinApp"
+EXPORTS_DIR = BASE_DIR / "exports"
+EXPORTS_DIR.mkdir(exist_ok=True)
 
 
 class NoCacheStaticFiles(StaticFiles):
@@ -47,11 +49,11 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(manager_router)
 
-if EMPLOYEE_DIR.exists():
-    app.mount("/employee", NoCacheStaticFiles(directory=str(EMPLOYEE_DIR), html=True), name="employee")
-if MANAGER_DIR.exists():
-    app.mount("/manager", NoCacheStaticFiles(directory=str(MANAGER_DIR), html=True), name="manager")
+if APP_DIR.exists():
+    app.mount("/app", NoCacheStaticFiles(directory=str(APP_DIR), html=True), name="app")
+app.mount("/exports", StaticFiles(directory=str(EXPORTS_DIR)), name="exports")
 
 
 @app.get("/")

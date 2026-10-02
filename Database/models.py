@@ -32,6 +32,9 @@ class User(Base):
     first_name = Column(String(100), nullable=True)
     username = Column(String(100), nullable=True)
     last_store_id = Column(Integer, ForeignKey("stores.id"), nullable=True)
+    main_message_id = Column(String(100), nullable=True)
+    temp_messages = Column(String(1000), nullable=True)
+    report_settings = Column(String(2000), nullable=True)
     notify_before_close = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now())
 

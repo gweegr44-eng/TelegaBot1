@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -56,10 +57,30 @@ async def _get_active_shifts(session):
     out = []
     for sh in shifts:
         u = (await session.execute(select(User).where(User.id == sh.user_id))).scalar_one_or_none()
+        if not u or u.role != "employee":
+            continue
         s = (await session.execute(select(Store).where(Store.id == sh.store_id))).scalar_one_or_none()
-        if u and s:
+        if s:
             out.append((u, s, sh))
     return out
+
+
+async def _remember_temp_message(user_id: int, message_id: str):
+    """Сохраняет ID временного сообщения (напоминания)."""
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        u = result.scalar_one_or_none()
+        if not u:
+            return
+        existing = []
+        if u.temp_messages:
+            try:
+                existing = json.loads(u.temp_messages)
+            except Exception:
+                existing = []
+        existing.append(str(message_id))
+        u.temp_messages = json.dumps(existing)
+        await session.commit()
 
 
 async def send_slot_notification(bot, slot):
@@ -77,13 +98,14 @@ async def send_slot_notification(bot, slot):
                     format="markdown", keyboard=kb,
                 )
                 if sent and getattr(sent, "id", None):
+                    msg_id = str(sent.id)
                     async with async_session() as sess2:
                         result = await sess2.execute(select(Shift).where(Shift.id == shift.id))
                         sh = result.scalar_one_or_none()
                         if sh:
-                            sh.last_message_id = str(sent.id)
+                            sh.last_message_id = msg_id
                             await sess2.commit()
-                    logger.info(f"[Scheduler] saved last_message_id={sent.id}")
+                    await _remember_temp_message(user.id, msg_id)
             except Exception as e:
                 logger.error(f"Ошибка: {e}")
 
@@ -92,8 +114,11 @@ async def remind_close_shift(bot):
     async with async_session() as session:
         for user, store, shift in await _get_active_shifts(session):
             try:
-                await bot.send_message(user_id=int(user.max_user_id),
-                                       text=msg.REMIND_CLOSE)
+                sent = await bot.send_message(
+                    user_id=int(user.max_user_id), text=msg.REMIND_CLOSE
+                )
+                if sent and getattr(sent, "id", None):
+                    await _remember_temp_message(user.id, sent.id)
             except Exception:
                 pass
 
@@ -102,8 +127,11 @@ async def warn_auto_close(bot):
     async with async_session() as session:
         for user, store, shift in await _get_active_shifts(session):
             try:
-                await bot.send_message(user_id=int(user.max_user_id),
-                                       text=msg.WARN_AUTO_CLOSE)
+                sent = await bot.send_message(
+                    user_id=int(user.max_user_id), text=msg.WARN_AUTO_CLOSE
+                )
+                if sent and getattr(sent, "id", None):
+                    await _remember_temp_message(user.id, sent.id)
             except Exception:
                 pass
 
@@ -116,6 +144,7 @@ async def auto_close_shifts(bot):
             shift.ended_at = now.replace(tzinfo=None)
             shift.is_active = False
             shift.is_auto_closed = True
+            shift.pending_closing = False
             count += 1
             try:
                 await bot.send_message(user_id=int(user.max_user_id),

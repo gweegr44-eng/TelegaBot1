@@ -1,5 +1,31 @@
+# Секреты
 .env
+
+# База данных
 *.db
-credentials.json
-venv/
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Экспорты
+exports/
+
+# Python
 __pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.log
+
+# CloudPub / Cloudflare
+clo.exe
+cloudflared.exe
+
+# Прочее
+.DS_Store
+Thumbs.db

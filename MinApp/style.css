@@ -1,0 +1,257 @@
+/* Фирменный стиль МТС — красный #E60000 */
+
+:root {
+    --mts-red: #E60000;
+    --mts-red-dark: #B80000;
+    --mts-red-light: #FF3333;
+    --bg-dark: #1a1a1a;
+    --bg-mid: #2a2a2a;
+    --bg-light: #333;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --border: #444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    padding: 16px;
+    min-height: 100vh;
+}
+
+.screen { animation: fadeIn 0.2s ease-in; }
+.hidden { display: none !important; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ===== LOADING ===== */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    color: #888;
+}
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top-color: #E60000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== ERROR ===== */
+.error-box {
+    max-width: 500px;
+    margin: 60px auto;
+    padding: 20px;
+    background-color: #3a1010;
+    color: #ff8a8a;
+    border: 1px solid #E60000;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 15px;
+}
+
+/* ===== HEADER ===== */
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #E60000;
+}
+.header h1 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: #fff;
+}
+.header .subtitle { font-size: 13px; color: #888; margin-top: 4px; }
+.header-info {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 14px;
+    color: #aaa;
+}
+.header-info strong { color: #E60000; font-weight: 600; }
+
+/* ===== FORMS ===== */
+.form-container, .container {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #bbb;
+}
+
+#report-form label { display: block; margin-bottom: 16px; }
+#report-form label span {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 6px;
+    color: #bbb;
+}
+
+#report-form input,
+#report-form select,
+select, input[type="date"] {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    color: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+#report-form input:focus,
+#report-form select:focus,
+select:focus,
+input[type="date"]:focus {
+    outline: none;
+    border-color: #E60000;
+    box-shadow: 0 0 0 2px rgba(230, 0, 0, 0.2);
+}
+
+input[type="date"] { margin-bottom: 12px; }
+
+.block { margin-bottom: 20px; }
+
+/* ===== STORES ===== */
+.stores {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #222;
+    border: 1px solid #444;
+    border-radius: 8px;
+}
+.stores.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.store-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 8px 4px;
+    border-bottom: 1px solid #333;
+    font-size: 14px;
+    cursor: pointer;
+}
+.store-item:last-child { border-bottom: none; }
+.store-item input { width: auto; margin-right: 10px; margin-top: 2px; accent-color: #E60000; }
+.store-item .code { color: #E60000; font-weight: 600; margin-right: 6px; }
+
+/* ===== BUTTONS ===== */
+.submit-btn {
+    width: 100%;
+    padding: 16px;
+    font-size: 17px;
+    font-weight: bold;
+    background-color: #E60000;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+.submit-btn:active {
+    background-color: #B80000;
+    transform: scale(0.98);
+}
+.submit-btn:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* ===== STATUS ===== */
+.status {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: center;
+}
+.status.success {
+    background-color: #1e3a2a;
+    color: #6ee7a1;
+    border: 1px solid #2ecc71;
+}
+.status.error {
+    background-color: #3a1010;
+    color: #ff8a8a;
+    border: 1px solid #E60000;
+}
+.hidden { display: none; }
+
+/* ===== CHECKBOX ===== */
+input[type="checkbox"] {
+    accent-color: #E60000;
+    width: auto;
+    margin-right: 8px;
+}
+/* Строка с заголовком и кнопкой настроек */
+.header-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    margin-bottom: 8px;
+}
+.header-row h1 { margin-bottom: 0; }
+
+.settings-btn {
+    position: absolute;
+    right: 0;
+    background: transparent;
+    border: 1px solid #444;
+    color: #E60000;
+    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.settings-btn:hover {
+    background-color: #2a2a2a;
+    border-color: #E60000;
+}
+.settings-btn:active {
+    background-color: #333;
+}
+
+/* Чекбоксы с подписью справа */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 15px;
+    color: #eee;
+    padding: 8px 4px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 10px;
+}
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    flex-shrink: 0;
+}

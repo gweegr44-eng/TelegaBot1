@@ -61,31 +61,57 @@ def _extract_user(init_data: str):
 
 @router.post("/me")
 async def get_me(payload: MePayload, session: AsyncSession = Depends(get_session)):
-    max_user_id, _, _ = _extract_user(payload.init_data)
+    max_user_id, first_name, username = _extract_user(payload.init_data)
     if not max_user_id:
         raise HTTPException(401, "Invalid initData")
 
     result = await session.execute(select(User).where(User.max_user_id == max_user_id))
     user = result.scalar_one_or_none()
     if not user:
-        return {"store_code": None, "has_active_shift": False, "pending_closing": False}
+        user = User(max_user_id=max_user_id, role="employee",
+                    first_name=first_name, username=username)
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+    else:
+        changed = False
+        if first_name and not user.first_name:
+            user.first_name = first_name
+            changed = True
+        if username and not user.username:
+            user.username = username
+            changed = True
+        if changed:
+            await session.commit()
 
     result = await session.execute(
         select(Shift).where(Shift.user_id == user.id, Shift.is_active == True)
     )
     shift = result.scalar_one_or_none()
-    if not shift:
-        return {"store_code": None, "has_active_shift": False, "pending_closing": False}
 
-    result = await session.execute(select(Store).where(Store.id == shift.store_id))
-    store = result.scalar_one_or_none()
+    store_code = None
+    address = None
+    pending_closing = False
+    shift_started_at = None
+
+    if shift:
+        result = await session.execute(select(Store).where(Store.id == shift.store_id))
+        store = result.scalar_one_or_none()
+        if store:
+            store_code = store.store_code
+            address = store.address
+        pending_closing = bool(shift.pending_closing)
+        shift_started_at = shift.started_at.isoformat() if shift.started_at else None
 
     return {
-        "store_code": store.store_code if store else None,
-        "address": store.address if store else None,
-        "has_active_shift": True,
-        "shift_started_at": shift.started_at.isoformat() if shift.started_at else None,
-        "pending_closing": bool(shift.pending_closing),
+        "role": user.role,
+        "max_user_id": max_user_id,
+        "first_name": user.first_name,
+        "store_code": store_code,
+        "address": address,
+        "has_active_shift": shift is not None,
+        "shift_started_at": shift_started_at,
+        "pending_closing": pending_closing,
     }
 
 
@@ -106,6 +132,20 @@ async def submit_report(
                     first_name=first_name, username=username)
         session.add(user)
         await session.flush()
+    else:
+        changed = False
+        if first_name and not user.first_name:
+            user.first_name = first_name
+            changed = True
+        if username and not user.username:
+            user.username = username
+            changed = True
+        if changed:
+            await session.flush()
+
+    # ⛔ Руководители не могут отправлять отчёты
+    if user.role not in ("employee",):
+        raise HTTPException(403, "Только сотрудники могут отправлять отчёты")
 
     result = await session.execute(
         select(Shift).where(Shift.user_id == user.id, Shift.is_active == True)
@@ -140,12 +180,13 @@ async def submit_report(
         await session.flush()
 
     is_closing = (
-            payload.is_closing
-            or payload.slot_time == "closing"
-            or shift.pending_closing
+        payload.is_closing
+        or payload.slot_time == "closing"
+        or shift.pending_closing
     )
 
     saved_message_id = shift.last_message_id
+    saved_main_id = user.main_message_id
 
     session.add(Report(
         store_id=store.id,
@@ -175,7 +216,8 @@ async def submit_report(
     await notify_report_sent(
         int(max_user_id),
         is_closing=is_closing,
-        message_id=saved_message_id,
+        notification_message_id=saved_message_id,
+        main_message_id=saved_main_id,
     )
 
     return {"ok": True}
